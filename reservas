@@ -1,0 +1,319 @@
+//
+//  main.cpp
+//  ReservasEstrellaMichelin
+//
+//  Created by Carlos Rodríguez on 3/1/21.
+//
+
+#include <iostream>
+#include <time.h>
+#include <vector>
+#import <sqlite3.h>
+#include <locale>
+
+
+
+
+static int callback(void* data, int argc, char** argv, char** azColName)
+{
+    int i;
+    fprintf(stderr, "%s: ", (const char*)data);
+  
+    for (i = 0; i < argc; i++) {
+        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+    }
+  
+    printf("\n");
+    return 0;
+}
+
+
+
+
+int main(int argc, const char * argv[]) {
+    
+    
+    typedef int (*sqlite3_callback)(
+       void*,    /* Data provided in the 4th argument of sqlite3_exec() */
+       int,      /* The number of columns in row */
+       char**,   /* An array of strings representing fields in the row */
+       char**    /* An array of strings representing column names */
+    );
+    
+    sqlite3 *DB;
+    sqlite3_stmt *query;
+    int exit = 0;
+    exit = sqlite3_open("/Users/wikichi/Máster/Desarrollo de software seguro/Temas 5 y 6/Práctica/ReservasEstrellaMichelin/ReservasEstrellaMichelin/RestaurantsDB.db", &DB);
+    std::string sql_query = "select * from USERS ";
+    char *zErrMsg = 0;
+    
+    std::string sql_insert = "";
+    std::string sql_cancel = "";
+    std::string sql_contact = "";
+    int id_reservation;
+    
+    short int numeroPremioUser = 0;
+    short int numeroRandom = 0;
+    short int suma = 0;
+    short int numeroPremiado = 25385;
+    
+    std::string numFoto = "";
+    std::string cadenaMesa = "";
+    
+    std::string textoDuda = "";
+    std::string correoDuda = "";
+    std::string finalDuda = "";
+    
+    
+    
+    if (exit) {
+            std::cerr << "Error open DB " << sqlite3_errmsg(DB) << std::endl;
+            return (-1);
+        }
+        else
+            std::cout << "Opened Database Successfully!" << std::endl;
+    
+    int option=99;
+    
+    bool existe;
+    std::cout << "¿Eres un usuario nuevo?" << std::endl;
+    //std::cin>>existe;
+    
+    std::string user="";
+    std::string pass="";
+    std::string user2="";
+    
+    char usuario[5]="a";
+    std::string name="";
+    std::string mail="";
+    int position;
+
+    char a[10];
+    a[10]=0;
+    
+    if(!(std::cin>>existe)){
+        std::cout << "La entrada no es válida" << std::endl;
+        return 0;
+    }
+    
+    if(!existe){
+        
+      
+        
+        while (user=="" || pass==""){
+            std::cout << "Inserte su usuario:" << std::endl;
+            std::cin>>user;
+            std::cout << "Inserte su contraseña:" << std::endl;
+            std::cin>>pass;
+            
+            
+            if( !std::all_of(user.begin(),user.end(),[](int i){return std::isalnum(i);}) || !std::all_of(pass.begin(),pass.end(),[](int i){return std::isalnum(i);})){
+                std::cout << "Solo puede usar valores alfanuméricos" << std::endl;
+                user="";
+                pass="";
+            
+            
+            //solución anterior
+            /*if ( user.find("=")!=std::string::npos || pass.find("=")!=std::string::npos){
+                std::cout << "Solo puede usar valores alfanuméricos" << std::endl;
+                user="";
+                pass="";*/
+                
+            }else{
+            
+                sql_query = sql_query + " WHERE USER = '" + user + "' AND PASS = '" + pass +"';";
+            
+                
+                //int rc = sqlite3_exec(DB, sql_query.c_str(), callback, 0, &zErrMsg);
+                int rc = sqlite3_prepare_v2(DB, sql_query.c_str(), -1, &query, NULL);
+                
+                if (rc != SQLITE_OK){
+                        std::cerr << "Error SELECT" << std::endl;
+                        std::cout << zErrMsg << std::endl;
+                } else {
+                        //std::cout << "Operation OK!" << std::endl;
+                    }
+                
+                
+                int stat = sqlite3_step(query);
+                
+                if (stat != SQLITE_ROW){
+                    std::cout << "Usuario inexistente" << std::endl;
+                    return 0;
+                }
+                
+                
+                
+            }
+            
+        }
+    
+    }else{
+        
+
+        
+        std::cout << "Inserte su usuario (maximo 4 caracteres):" << std::endl;
+        std::cin>>user;
+        while(user.length()>4){
+            std::cout << "Inserte su usuario (maximo 4 caracteres):" << std::endl;
+            std::cin>>user;
+        }
+        std::cout << "Inserte su contraseña:" << std::endl;
+        std::cin>>pass;
+        std::cout << "Inserte su nombre completo:" << std::endl;
+        std::cin>>name;
+        std::cout << "Inserte su mail:" << std::endl;
+        std::cin>>mail;
+        
+        //Bucle para demostrar que no falla a pesar de sobrepasar las posiciones
+        //for(int i=0; i<20; i++){
+        //    std::cout << usuario[i] << std::endl;
+        //}
+        
+        if(mail.find("@")==std::string::npos){
+            std::cout << "Es necesario que introduzca un mail válido" << std::endl;
+            return 0;
+        }
+        
+        
+        sql_insert = "INSERT INTO USERS VALUES('" + user + "','" + pass + "','" + name + "','" + mail + "');";
+        
+        int rc = sqlite3_exec(DB, sql_insert.c_str(), callback, 0, &zErrMsg);
+        
+        if (rc != SQLITE_OK){
+                std::cerr << "Error SELECT" << std::endl;
+                std::cout << zErrMsg << std::endl;
+        } else {
+                std::cout << "Operation OK!" << std::endl;
+            }
+    }
+        
+    int rc;
+    
+    while (option){
+    // menú
+        std::cout << "-------------------------------------------" << std::endl;
+        std::cout << "Seleccione la opción deseada:" << std::endl;
+        std::cout << "1 - Nueva reserva" << std::endl;
+        std::cout << "2 - Cancelación reserva" << std::endl;
+        std::cout << "3 - Seleccione su la letra de control de su usuario" << std::endl;
+        std::cout << "4 - Escoja su mesa" << std::endl;
+        std::cout << "5 - Participe en una cena gratuita" << std::endl;
+        std::cout << "6 - Salir" << std::endl;
+        std::cout << "-------------------------------------------" << std::endl;
+        std::cout << "Opción: ";
+        std::cin >> option;
+        std::cout << option << std::endl;
+        
+        switch (option) {
+            case 1:
+                sql_insert = "INSERT INTO BOOKING(USER,DATE) VALUES('" + user + "',DATETIME('now','+8 days'));";
+                std::cout << sql_insert << std::endl;
+                rc = sqlite3_exec(DB, sql_insert.c_str(), callback, 0, &zErrMsg);
+                
+                if (rc != SQLITE_OK){
+                        std::cerr << "Error SELECT" << std::endl;
+                        std::cout << zErrMsg << std::endl;
+                } else {
+                        std::cout << "Operation OK!" << std::endl;
+                    }
+                sql_insert = "";
+                break;
+            case 2:
+                std::cout << "Insert el id de la reserva que desea cancelar:" << std::endl;
+                std::cin >> id_reservation;
+                sql_cancel = "DELETE FROM BOOKING WHERE ID = " + std::to_string(id_reservation) + " AND USER = '" + user + "';";
+                
+                rc = sqlite3_exec(DB, sql_cancel.c_str(), callback, 0, &zErrMsg);
+                
+                if (rc != SQLITE_OK){
+                        std::cerr << "Error SELECT" << std::endl;
+                        std::cout << zErrMsg << std::endl;
+                } else {
+                        std::cout << "Operation OK!" << std::endl;
+                    }
+                break;
+            case 3:
+                
+                std::cout << "Vuelva a insertar su usuario" << std::endl;
+                std::cin >> user2;
+            
+                if(user2 == user){
+                
+                    std::cout << "Seleccione la posición de la letra que desea guardar" << std::endl;
+                    std::cin >> position;
+                
+                    sql_insert = "INSERT INTO SECURITY_CHAR VALUES ('" + user + "','" + std::to_string(position) + "','" + usuario[position-1] + "');";
+                
+                    std::cout << sql_insert << std::endl;
+                
+                    rc = sqlite3_exec(DB, sql_insert.c_str(), callback, 0, &zErrMsg);
+                
+                    if (rc != SQLITE_OK){
+                            std::cerr << "Error SELECT" << std::endl;
+                            std::cout << zErrMsg << std::endl;
+                    } else {
+                            std::cout << "Operation OK!" << std::endl;
+                        }
+                    sql_insert = "";
+                
+                }else{
+                    std::cout << "No es el mismo usuario" << std::endl;
+                    return 0;
+                }
+                break;
+            case 4:
+                //system("open /Applications/Safari.app");
+                std::cout << "Las mesas disponibles son la 1, 2, 3 y 4. Escoja la suya y le mostraremos una foto de esta." << std::endl;
+                std::getline(std::cin >> std::ws,numFoto);
+                
+                while(std::stoi(numFoto)>4 || std::stoi(numFoto)<1){
+                    std::cout << "Por favor, elija un número del 1 al 4." << std::endl;
+                    std::getline(std::cin >> std::ws,numFoto);
+                }
+                
+                cadenaMesa = "open -a Preview /Users/wikichi/FotosMesas/mesa" + numFoto + ".png";
+                
+                std::cout << cadenaMesa << std::endl << std::endl << std::endl;
+                
+                
+                system(cadenaMesa.c_str());
+                break;
+
+            case 5:
+                
+                std::cout << "Debe escoger un número entre 0 y 32000 " << std::endl;
+                std::cin >> numeroPremioUser;
+                
+                while (numeroPremioUser < 0 || numeroPremioUser > 32000){
+                    std::cout << "Por favor, escoja un número válido " << std::endl;
+                    std::cin >> numeroPremioUser;
+                }
+                
+                std::cout << "Ahora añadiremos un número random" << std::endl;
+                numeroRandom = rand() %2767;
+                
+                suma = numeroPremioUser + numeroRandom;
+                
+                std::cout << "Suma: " << suma << std::endl;
+                
+                if(numeroPremiado == suma)
+                    std::cout << "Ganador!" << std::endl;
+                else
+                    std::cout << "La próxima vez será..." << std::endl;
+                
+                break;
+            case 6:
+                std::cout << "SALIENDOOOOO" << std::endl;
+                sqlite3_close(DB);
+                return 0;
+            default:
+                std::cout << "Elección inválida. Vuelva a intentarlo." << std::endl;
+                std::cin.ignore();
+                break;
+        }
+        
+    }
+}
+
+
